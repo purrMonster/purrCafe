@@ -57,6 +57,8 @@ Set `DOMAIN` and review `config/services.json` to confirm your real hostnames. A
 
 ## Operations and rollback
 
+For a first deployment that exits with an invalid `APP_ENCRYPTION_KEY`, run `python3 deployment/prepare.py` on percolator. It inspects the container environment without printing credentials. `python3 deployment/prepare.py --repair-unused-key` generates a key on the node only after confirming there are no saved account files, keeps a private backup of `.env`, and validates startup configuration. It does not restart the service. Never replace a key used by existing mailbox credentials; restore the original key instead.
+
 - Preserve `dashboard-data` and the encryption key together in restricted backups. Include `.env` and `config/` securely. Verify restores; no backup status is claimed by this application.
 - `docker compose down` stops this deployment without deleting the named data volume. Do not use `down -v` unless intentionally deleting saved mailbox credentials and the budget cache.
 - Keep the existing Homepage hostname until the new app has been validated. Rolling back means routing users to the existing Homepage and stopping this container.
