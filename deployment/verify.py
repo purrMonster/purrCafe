@@ -1,12 +1,20 @@
 """Read-only checks of the deployed Cafe container and HTTPS entry point."""
 import json
 import subprocess
+import time
 import urllib.error
 import urllib.request
 
 name = 'purrbrews-cafe-purrbrews-dashboard-1'
-result = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, check=True)
-container = json.loads(result.stdout)[0]
+deadline = time.monotonic() + 45
+while True:
+    result = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, check=True)
+    container = json.loads(result.stdout)[0]
+    if container['State'].get('Health', {}).get('Status') == 'healthy':
+        break
+    if time.monotonic() >= deadline:
+        raise SystemExit('Container did not become healthy within 45 seconds. Inspect its logs.')
+    time.sleep(1)
 environment = dict(item.split('=', 1) for item in container['Config']['Env'] if '=' in item)
 print('Container health:', container['State'].get('Health', {}).get('Status', 'unknown'))
 print('Restart count:', container['RestartCount'])
