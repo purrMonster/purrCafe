@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--repair-unused-key', action='store_true')
 parser.add_argument('--configure-proxy', action='store_true', help='Fill an empty trust setting from Traefik on the proxy network.')
+parser.add_argument('--configure-domain-from-fleet', action='store_true', help='Replace example hostnames using the existing percolator domain.')
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 os.chdir(root)
@@ -64,6 +65,43 @@ if args.repair_unused_key and not info['keyValid']:
 
 if not info['keyValid']:
     raise SystemExit('Key is invalid. Use --repair-unused-key only for a deployment with no saved accounts.')
+if args.configure_domain_from_fleet:
+    domain = None
+    for fleet_path in [Path('/opt/purrbrews/.env'), Path('/opt/purrbrews/stacks/percolator/.env.local')]:
+        if fleet_path.exists():
+            match = re.search(r'^DOMAIN=(.*)$', fleet_path.read_text(), re.MULTILINE)
+            if match:
+                domain = match.group(1).strip().strip('\"\'')
+    if not domain or not re.fullmatch(r'[a-zA-Z0-9.-]+', domain) or domain.endswith('.example'):
+        raise SystemExit('No usable DOMAIN in the existing fleet settings.')
+    path = root / '.env'
+    original = path.read_text()
+    updated = original
+    for setting, value in [('DOMAIN', domain), ('PUBLIC_ORIGIN', 'https://cafe.' + domain)]:
+        matches = list(re.finditer(r'^' + setting + r'=(.*)$', updated, re.MULTILINE))
+        if len(matches) > 1:
+            raise SystemExit('Duplicate hostname settings: resolve these manually.')
+        existing = matches[0].group(1).strip().strip('\"\'') if matches else ''
+        if existing and 'your-domain.example' not in existing:
+            print('Preserved existing ' + setting + '.')
+            continue
+        updated = re.sub(r'^' + setting + r'=.*$', setting + '=' + value, updated,
+                         flags=re.MULTILINE) if matches else updated.rstrip() + '\n' + setting + '=' + value + '\n'
+    if updated != original:
+        backup = root / ('.env.backup-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ'))
+        fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(original)
+        fd, temporary = tempfile.mkstemp(prefix='.env.tmp-', dir=root)
+        try:
+            with os.fdopen(fd, 'w') as handle:
+                handle.write(updated)
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        print('Replaced example hostnames using the server-local fleet domain; .env backed up privately.')
 if args.configure_proxy:
     path = root / '.env'
     original = path.read_text()

@@ -61,6 +61,8 @@ For a first deployment that exits with an invalid `APP_ENCRYPTION_KEY`, run `pyt
 
 Add `--configure-proxy` to fill an empty `AUTH_TRUSTED_PROXY_CIDRS` using only the current Traefik container's IPv4 address on `proxy`, with a `/32` mask. Existing trust settings are preserved. If Traefik is recreated with a different address, update this setting before restarting Café; identity requests fail closed until the trusted address matches.
 
+`--configure-domain-from-fleet` replaces only blank/example `DOMAIN` and `PUBLIC_ORIGIN` settings using the existing server-local percolator fleet settings and the `cafe` subdomain. The real domain is never written into repository files. After recreating Café, run `python3 deployment/verify.py` to check health, unauthenticated API rejection, and HTTPS ingress with certificate verification enabled.
+
 - Preserve `dashboard-data` and the encryption key together in restricted backups. Include `.env` and `config/` securely. Verify restores; no backup status is claimed by this application.
 - `docker compose down` stops this deployment without deleting the named data volume. Do not use `down -v` unless intentionally deleting saved mailbox credentials and the budget cache.
 - Keep the existing Homepage hostname until the new app has been validated. Rolling back means routing users to the existing Homepage and stopping this container.

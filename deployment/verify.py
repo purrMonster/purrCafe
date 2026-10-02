@@ -30,8 +30,8 @@ for route in ['/', '/api/session']:
     except urllib.error.HTTPError as error:
         status = error.code
         error.close()
-    except (urllib.error.URLError, TimeoutError):
-        print('HTTPS ' + route + ': unreachable or TLS/DNS validation failed')
+    except (urllib.error.URLError, TimeoutError) as error:
+        print('HTTPS ' + route + ': unreachable or TLS/DNS validation failed:', str(error))
         raise SystemExit(1)
     print('HTTPS ' + route + ': HTTP ' + str(status))
     if status not in [301, 302, 303, 307, 308, 401, 403]:
