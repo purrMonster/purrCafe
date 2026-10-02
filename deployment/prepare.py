@@ -1,5 +1,6 @@
 """Diagnose deployment without printing secrets; repair an unused encryption key."""
 import argparse
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ from datetime import datetime, timezone
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--repair-unused-key', action='store_true')
+parser.add_argument('--configure-proxy', action='store_true', help='Fill an empty trust setting from Traefik on the proxy network.')
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 os.chdir(root)
@@ -62,6 +64,35 @@ if args.repair_unused_key and not info['keyValid']:
 
 if not info['keyValid']:
     raise SystemExit('Key is invalid. Use --repair-unused-key only for a deployment with no saved accounts.')
+if args.configure_proxy:
+    path = root / '.env'
+    original = path.read_text()
+    matches = list(re.finditer(r'^AUTH_TRUSTED_PROXY_CIDRS=(.*)$', original, re.MULTILINE))
+    if len(matches) > 1:
+        raise SystemExit('Duplicate proxy trust settings: resolve these manually.')
+    existing = matches[0].group(1).strip().strip('\"\'') if matches else ''
+    if not existing:
+        result = subprocess.run(['docker', 'inspect', 'traefik'], capture_output=True, text=True, check=True)
+        address = json.loads(result.stdout)[0]['NetworkSettings']['Networks']['proxy']['IPAddress']
+        address = str(ipaddress.IPv4Address(address)) + '/32'
+        updated = re.sub(r'^AUTH_TRUSTED_PROXY_CIDRS=.*$', 'AUTH_TRUSTED_PROXY_CIDRS=' + address,
+                         original, flags=re.MULTILINE) if matches else original.rstrip() + '\nAUTH_TRUSTED_PROXY_CIDRS=' + address + '\n'
+        backup = root / ('.env.backup-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ'))
+        fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(original)
+        fd, temporary = tempfile.mkstemp(prefix='.env.tmp-', dir=root)
+        try:
+            with os.fdopen(fd, 'w') as handle:
+                handle.write(updated)
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        print('Trusted only the current Traefik proxy IPv4 /32; original .env backed up privately.')
+    else:
+        print('Preserved the existing proxy trust setting.')
 subprocess.run(compose + ['run', '--rm', '--no-deps', '--entrypoint', 'node',
                          'purrbrews-dashboard', '-e',
                          "import('./server/config.mjs').then(()=>console.log('Startup configuration valid.'))"], check=True)
