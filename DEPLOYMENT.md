@@ -35,6 +35,8 @@ Only listed entities are returned to the browser. Only explicitly allowed `turn_
 
 ## Actual Budget
 
+For guided server-side configuration, run `python3 deployment/configure-actual.py` from the checkout on percolator. It prompts for Sync ID, a hidden session token, currency, and optional budget encryption password; preserves unrelated settings; backs up `.env` privately; and recreates only Café. It uses the existing `actualbudget:5006` backend when no server URL is configured. Never paste token values into chat or commit them to Git.
+
 Set `ACTUAL_SERVER_URL` to the backend address, `ACTUAL_SYNC_ID` from the budget's advanced settings, and `BUDGET_CURRENCY` to the budget currency. This is one shared household budget; each household account can see category details.
 
 The pinned [Actual API](https://actualbudget.org/docs/api/) supports `sessionToken` authentication. For the existing OpenID setup, use a current Actual session token as `ACTUAL_SESSION_TOKEN`, obtained locally from your signed-in Actual client or by your administrator. Treat it as a credential; never paste it into chat or the frontend. Set `ACTUAL_PASSWORD` only for a server that already uses password authentication. Do not disable OpenID to make the dashboard work. Tokens may expire; replace the token and restart when sync becomes unavailable. Set `ACTUAL_ENCRYPTION_PASSWORD` if the budget uses end-to-end encryption.
