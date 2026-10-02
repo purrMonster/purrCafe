@@ -1,0 +1,39 @@
+services:
+  purrbrews-dashboard:
+    build: .
+    image: purrbrews-dashboard:1.0.0
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DATA_DIR: /app/data
+      PORT: 4174
+      HA_ENTITIES_FILE: /app/config/home.json
+      SERVICES_FILE: /app/config/services.json
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:size=64m,mode=1777]
+    volumes:
+      - dashboard-data:/app/data
+      - ./config:/app/config:ro
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.purrbrews-dashboard.rule=Host(`dashboard.${DOMAIN}`)
+      - traefik.http.routers.purrbrews-dashboard.entrypoints=websecure
+      - traefik.http.routers.purrbrews-dashboard.middlewares=authelia@file
+      - traefik.http.services.purrbrews-dashboard.loadbalancer.server.port=4174
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  dashboard-data:
+networks:
+  proxy:
+    external: true
