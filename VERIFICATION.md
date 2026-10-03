@@ -1,5 +1,17 @@
 # Purrbrews verification report
 
+## October 3, 2026 repass
+
+- 19 application tests passed again on Windows and inside the deployed Linux container.
+- Six isolated Actual setup-helper tests passed on Windows and Linux: secret-free output, backups and permissions, preserved custom backend, duplicate-setting rejection, token validation, noninteractive-input rejection, and password character preservation.
+- Current production dependency audit: zero known vulnerabilities.
+- Deployed Café: healthy, restart count zero, internal health HTTP 200, unauthenticated API HTTP 401, verified HTTPS, and browser-style requests redirect to Authelia.
+- Live configuration diagnosis: Actual settings unset; Home Assistant URL/token present with zero entities selected; Gatus configured but unavailable. Home Assistant pointed at the wrong fleet node; the configuration guide identifies mochaPot as the correct target. Gatus's configured LAN port is not published by its service.
+- Setup fix: require an interactive terminal before prompting for credentials.
+- Added a provider-status-only diagnostic and CONFIGURATION.md. Changes delivered via GitHub. No credentials or real domain committed. The repass did not change fleet routing or inject integration credentials.
+
+Authenticated browser sessions, real Actual authentication/budget totals, personal mailbox connections, and an eventual Gatus backend route remain to be verified after configuration. The frontend code is unchanged since the recorded desktop/tablet/phone fixture review below.
+
 Reviewed October 2, 2026 (Asia/Calcutta).
 
 ## Completion status

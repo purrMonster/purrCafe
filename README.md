@@ -2,6 +2,8 @@
 
 ## Live dashboard
 
+Start with [CONFIGURATION.md](CONFIGURATION.md) for the step-by-step setup of Actual, personal mail, Home Assistant, Gatus, and the wall display.
+
 The production application is now separate from these mockups. See [DEPLOYMENT.md](DEPLOYMENT.md) for local development, Authelia access, Home Assistant, Actual Budget, Purelymail, Gatus, and Docker deployment. Live pages run on port 4174; the standalone mockup server below remains on port 4173.
 
 ## Launch directly — no installation needed
