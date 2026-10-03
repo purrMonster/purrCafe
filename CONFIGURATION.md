@@ -41,6 +41,8 @@ Sign into Café using your normal household account, open Settings, and enter yo
 
 ## 4. Configure Home Assistant when entities are ready
 
+For an existing entity and the standard Café routing override, a guided option is `python3 deployment/configure-home.py --url http://192.168.0.13:8123 --entities weather.your_real_entity_id`. Replace the example ID. The helper verifies the saved token and entity existence before changing settings, writes a private entity file with read-only actions, preserves credentials and routing, and recreates only Café. It refuses location entities and unfamiliar custom YAML overrides instead of overwriting them. Weather display exposes temperature, units, and humidity only; coordinates are omitted.
+
 The fleet's Home Assistant is on mochaPot, `192.168.0.13`. Grinder, `192.168.0.14`, is not the Home Assistant node.
 
 ```bash

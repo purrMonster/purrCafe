@@ -1,5 +1,11 @@
 # Deployment handoff — October 2, 2026
 
+## October 3 — Home weather connected
+
+Added a weather-reading projection exposing only temperature, units and humidity, plus an entity selection helper that writes generated household configuration privately on the node. Coordinates, home-zone and tracking entities are excluded. The saved HA token and an existing weather entity were validated against mochaPot before applying settings. Selection is read-only, with no device controls. The real selected entity ID remains in the server-local file, outside Git.
+
+Code was pushed to GitHub and pulled on percolator; Café alone was rebuilt. Home and Actual provider status both report `ready`. All 21 application tests passed inside the rebuilt image, container healthy with zero restarts, and the node checkout clean. Gatus's backend route remains unavailable. Refresh Café to view weather; controllable household devices still need pairing and explicit entity/action selection.
+
 ## October 3 — Actual connected
 
 Actual's configured public HTTPS URL failed from Café during authentication with `network-failure`. The server-local URL was changed to the existing shared-network backend `http://actualbudget:5006`; credentials and Sync ID were preserved. A temporary-cache diagnostic completed authentication, download, sync and budget normalization successfully.
