@@ -9,11 +9,13 @@ import secrets
 import subprocess
 import tempfile
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--repair-unused-key', action='store_true')
 parser.add_argument('--configure-proxy', action='store_true', help='Fill an empty trust setting from Traefik on the proxy network.')
 parser.add_argument('--configure-domain-from-fleet', action='store_true', help='Replace example hostnames using the existing percolator domain.')
+parser.add_argument('--actual-backend-url', help='Explicitly replace only the Actual backend URL, preserving credentials.')
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 os.chdir(root)
@@ -65,6 +67,33 @@ if args.repair_unused_key and not info['keyValid']:
 
 if not info['keyValid']:
     raise SystemExit('Key is invalid. Use --repair-unused-key only for a deployment with no saved accounts.')
+if args.actual_backend_url:
+    value = args.actual_backend_url.rstrip('/')
+    parsed = urlsplit(value)
+    if parsed.scheme not in ['http', 'https'] or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path:
+        raise SystemExit('Use a backend HTTP(S) origin without credentials or a path.')
+    path = root / '.env'
+    original = path.read_text()
+    matches = list(re.finditer(r'^ACTUAL_SERVER_URL=.*$', original, re.MULTILINE))
+    if len(matches) > 1:
+        raise SystemExit('Duplicate ACTUAL_SERVER_URL settings: resolve these manually.')
+    updated = re.sub(r'^ACTUAL_SERVER_URL=.*$', lambda match: 'ACTUAL_SERVER_URL=' + value,
+                     original, flags=re.MULTILINE) if matches else original.rstrip() + '\nACTUAL_SERVER_URL=' + value + '\n'
+    if updated != original:
+        backup = root / ('.env.backup-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ'))
+        fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(original)
+        fd, temporary = tempfile.mkstemp(prefix='.env.tmp-', dir=root)
+        try:
+            with os.fdopen(fd, 'w') as handle:
+                handle.write(updated)
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        print('Actual backend URL updated; existing credentials preserved and .env backed up privately.')
 if args.configure_domain_from_fleet:
     domain = None
     for fleet_path in [Path('/opt/purrbrews/.env'), Path('/opt/purrbrews/stacks/percolator/.env.local')]:
