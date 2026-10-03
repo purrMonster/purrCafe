@@ -30,7 +30,7 @@ try{await api?.shutdown();}catch{}parentPort.postMessage({status:'failed',stage,
 let worker;
 try {
 const result=await new Promise((resolve)=>{
-worker=new Worker(workerCode,{eval:true,workerData:{actual:config.actual,dir,timezone:config.timezone,currency:config.currency},stdout:true,stderr:true});
+worker=new Worker(workerCode,{eval:true,execArgv:[],workerData:{actual:config.actual,dir,timezone:config.timezone,currency:config.currency},stdout:true,stderr:true});
 worker.stdout.resume();worker.stderr.resume();
 const timer=setTimeout(()=>resolve({status:'failed',stage:'worker',reason:'timeout'}),75000);
 worker.once('message',message=>{clearTimeout(timer);resolve(message);});
