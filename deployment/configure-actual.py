@@ -4,10 +4,13 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 
 root = Path(__file__).resolve().parent.parent
+if not sys.stdin.isatty():
+    raise SystemExit('Run this helper in your interactive SSH terminal; hidden credential input requires a terminal.')
 path = root / '.env'
 original = path.read_text()
 sync_id = input('Actual budget Sync ID: ').strip()
