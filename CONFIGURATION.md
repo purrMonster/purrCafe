@@ -17,9 +17,10 @@ Expect healthy, zero restarts, internal health HTTP 200, unauthenticated API HTT
 1. Open your existing Actual website and sign in through OpenID.
 2. Open the household budget, then Settings → Show advanced settings → Sync ID. Copy the Sync ID, not the local budget ID.
 3. In browser developer tools (F12), open Network and refresh Actual. Select a request under `/sync/` that has an `X-ACTUAL-TOKEN` request header; copy that header's value. Copy only the value. Do not send it in chat or commit it.
-4. In your interactive SSH terminal run:
+4. On this fleet, use Actual's shared Docker-network backend, then run the interactive setup:
 
 ```bash
+python3 deployment/prepare.py --actual-backend-url http://actualbudget:5006
 python3 deployment/configure-actual.py
 ```
 
@@ -87,6 +88,8 @@ python3 deployment/integration-status.py
 ```
 
 Home should report `ready`, with selectedEntities greater than zero. Compare the sensor value with Home Assistant. Until devices are paired and IDs are selected, Setup needed is expected.
+
+For an Actual failure, `python3 deployment/diagnose-actual.py` tests authentication, download, sync, and normalization using a disposable cache. It prints only the failure stage and an allowlisted error code, never token values or budget contents. The cache is removed afterward. `network-failure` at authentication points to server access; `token-expired` points to the session token; `budget-not-found` points to Sync ID or access; `missing-key` requires the budget's encryption password.
 
 ## 5. Gatus requires an infrastructure connection
 
