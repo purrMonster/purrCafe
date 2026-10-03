@@ -59,6 +59,12 @@ export function normalizeFleet(data,keys={},now=Date.now()) {
     return {name,state:!valid?'unknown':latest.success===true?'up':latest.success===false?'down':'unknown',checkedAt:latest?.timestamp || null};
   });
 }
+export function weatherReading(attributes={}) {
+  if(!attributes || typeof attributes!=='object') return null;
+  const temperature=attributes.temperature,humidity=attributes.humidity;
+  if(typeof temperature!=='number' || !Number.isFinite(temperature)) return null;
+  return {temperature,unit:['°C','°F'].includes(attributes.temperature_unit)?attributes.temperature_unit:'',humidity:typeof humidity==='number' && Number.isFinite(humidity) && humidity>=0 && humidity<=100?humidity:null};
+}
 export function projectWall(data) {
   const budget = data.budget.data;
   return {...data,home:{...data.home,data:data.home.data?.filter(item=>item.wall).map(item=>({...item,actions:item.wallControl?item.actions:[]})) || null},budget:{...data.budget,data:budget?{month:budget.month,currency:budget.currency,assigned:budget.assigned,activity:budget.activity,available:budget.available}:null},services:[],user:{name:'Household display',wallOnly:true,admin:false}};

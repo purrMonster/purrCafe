@@ -1,7 +1,7 @@
 import { Worker } from 'node:worker_threads';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import { ready, missing, unavailable, cached, normalizeFleet } from './data.mjs';
+import { ready, missing, unavailable, cached, normalizeFleet, weatherReading } from './data.mjs';
 import { HttpError } from './security.mjs';
 export async function json(url,options={}) {
   const response = await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(12000)});
@@ -27,7 +27,7 @@ export function connectors(config) {
       if (!Array.isArray(states)) throw new Error('Invalid states.');
       return ready(config.entities.map(item=> {
         const state = states.find(state=>state.entity_id === item.id);
-        return {...item,state:state?.state || 'unavailable',unit:String(state?.attributes?.unit_of_measurement || '').slice(0,20),updatedAt:state?.last_updated || null,available:Boolean(state && !['unknown','unavailable'].includes(state.state))};
+        return {...item,state:state?.state || 'unavailable',unit:String(state?.attributes?.unit_of_measurement || '').slice(0,20),...(item.id.startsWith('weather.')?{reading:weatherReading(state?.attributes)}:{}),updatedAt:state?.last_updated || null,available:Boolean(state && !['unknown','unavailable'].includes(state.state))};
       }));
     } catch { return unavailable('Home Assistant could not be reached or authenticated.'); }
   });
