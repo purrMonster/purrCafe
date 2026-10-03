@@ -14,6 +14,11 @@ export async function json(url,options={}) {
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
+export function actualWorkerOptions(workerData) {
+  // The filename supplies module type. Inheriting --input-type from stdin-based
+  // deployment checks makes a file-backed worker fail before any API call.
+  return {workerData,execArgv:[],stdout:true,stderr:true};
+}
 export function connectors(config) {
   const home = cached(10,async()=> {
     if(!config.ha.url || !config.ha.token || !config.entities.length) return missing('Configure Home Assistant and select your entities.');
@@ -31,7 +36,7 @@ export function connectors(config) {
     const actual=config.actual;
     if(!actual.url || !actual.syncId || (!actual.sessionToken && !actual.password)) return missing('Configure the Actual server, Sync ID, and authentication.');
     return new Promise(resolve=> {
-      const worker=new Worker(new URL('./actual-worker.mjs',import.meta.url),{workerData:{actual,dataDir:config.dataDir,timezone:config.timezone,currency:config.currency},stdout:true,stderr:true});
+      const worker=new Worker(new URL('./actual-worker.mjs',import.meta.url),actualWorkerOptions({actual,dataDir:config.dataDir,timezone:config.timezone,currency:config.currency}));
       actualWorker=worker;
       // Provider logs are suppressed: they may contain tokens or budget contents.
       worker.stdout.resume();worker.stderr.resume();
