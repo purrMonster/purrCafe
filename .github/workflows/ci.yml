@@ -1,0 +1,47 @@
+# Tests on every PR and on main. Also builds the image (without pushing)
+# and runs the test suite inside it, so Dockerfile breakage shows up here.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.16'
+          cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:deploy
+      - run: npm audit --omit=dev --audit-level=high
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: purrcafe:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Tests inside the image (no network, read-only)
+        run: >
+          docker run --rm --network none --read-only --cap-drop ALL
+          --security-opt no-new-privileges --tmpfs /tmp:size=128m,mode=1777
+          --entrypoint node purrcafe:ci --test 'server/*.test.mjs'
