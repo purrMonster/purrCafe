@@ -1,5 +1,12 @@
 # Runbook
 
+## 2026-10-14 — Release 1.1.0 prepared (branch `release/v1.1.0`)
+
+- Bumped `package.json` and `package-lock.json` to 1.1.0. Added `CHANGELOG.md`; its 1.1.0 section is the release notes.
+- PR #3 is merged: README screenshot fixed, badges added. The GHCR package is public; `:edge` and `:sha-4ed5bea` are published.
+
+**Where we stopped / next step:** merge this PR, then tag `v1.1.0` on the merge commit (only on his go-ahead). That publishes `:1.1.0`, `:1.1` and `:latest`. Create the GitHub release from the CHANGELOG section, then migrate percolator.
+
 ## 2026-10-14 — CI and image publishing (branch `ci/image-and-tests`)
 
 - Added `.github/workflows/ci.yml`. It runs on PRs and main: server tests, helper tests, `npm audit` (high and above), then an image build with the tests run inside it.
