@@ -36,7 +36,7 @@ docker compose pull && docker compose up -d            # release image from CAFE
 python3 deployment/verify.py
 ```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full setup and [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for each integration. All settings are listed in [.env.example](.env.example).
+For a server without a repo checkout, copy [`deploy/`](deploy/) instead. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full setup and [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for each integration. All settings are listed in [.env.example](.env.example).
 
 ## Layout
 
@@ -45,6 +45,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full setup and [docs/CONFIG
 | `server/` | HTTP server, integrations, security checks, tests (`npm test`) |
 | `app/` | Live front end |
 | `config/` | `*.example.json` templates; your real `home.json` / `services.json` stay untracked |
+| `deploy/` | Standalone compose + sample `.env` that pull the published image; copy this folder to a server |
 | `deployment/` | Server-side helper scripts that never print secrets (`npm run test:deploy`) |
 | `previews/` | Static design mockups with sample data (`npm run preview`, port 4173) |
 | `verification/` | Fictional-data UI fixture for browser checks |

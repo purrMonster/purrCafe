@@ -1,0 +1,48 @@
+# purrCafe — standalone deployment from the published image (no build, no repo checkout).
+# Copy this folder to the server, then:
+#   cp .env.example .env && chmod 600 .env      # fill it in
+#   cp config/services.example.json config/services.json
+#   docker compose pull && docker compose up -d
+# Requires: Traefik on the external network in PROXY_NETWORK, with a forward-auth
+# middleware (e.g. Authelia) that sets Remote-User / Remote-Groups / Remote-Name.
+name: ${COMPOSE_PROJECT_NAME:-purrbrews-cafe}
+services:
+  purrbrews-dashboard:
+    image: ${CAFE_IMAGE:-ghcr.io/purrmonster/purrcafe:1.1.0}
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4174
+      DATA_DIR: /app/data
+      HA_ENTITIES_FILE: /app/config/home.json
+      SERVICES_FILE: /app/config/services.json
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - dashboard-data:/app/data   # saved mailboxes + budget cache; back up WITH .env
+      - ./config:/app/config:ro
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${PROXY_NETWORK:-proxy}
+      - traefik.http.routers.purrbrews-dashboard.rule=Host(`${PUBLIC_HOSTNAME:?Set PUBLIC_HOSTNAME in .env}`)
+      - traefik.http.routers.purrbrews-dashboard.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.purrbrews-dashboard.middlewares=${TRAEFIK_AUTH_MIDDLEWARE:-authelia@file}
+      - traefik.http.services.purrbrews-dashboard.loadbalancer.server.port=4174
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  dashboard-data:
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:-proxy}
+    external: true
