@@ -56,7 +56,7 @@ export function connectors(config) {
     try {
       const data=await json(`${config.gatus.url}/api/v1/endpoints/statuses`,{headers:config.gatus.authorization?{Authorization:config.gatus.authorization}:{}});
       if(!Array.isArray(data)) throw new Error('Invalid Gatus statuses.');
-      return ready(normalizeFleet(data,config.fleetKeys));
+      return ready(normalizeFleet(data,config.fleetKeys,Date.now(),config.fleetNodes));
     } catch { return unavailable('Gatus could not be reached or authenticated.'); }
   });
   return {home,budget,fleet,async action(domain,service,id) {
@@ -65,8 +65,9 @@ export function connectors(config) {
     catch { throw new HttpError(502,'The device command could not be confirmed. Check Home Assistant before retrying.'); }
   },async close() { if(actualWorker) await actualWorker.terminate(); }};
 }
-export async function withMailbox(account,work,{createClient=options=>new ImapFlow(options),timeoutMs=45000}={}) {
-  const client=createClient({host:'imap.purelymail.com',port:993,secure:true,auth:{user:account.address,pass:account.password},logger:false,connectionTimeout:12000,greetingTimeout:12000,socketTimeout:20000,disableAutoIdle:true});
+export async function withMailbox(account,work,{server,createClient=options=>new ImapFlow(options),timeoutMs=45000}={}) {
+  if(!server?.host) throw new HttpError(503,'Mailbox access is not configured on this server.');
+  const client=createClient({host:server.host,port:server.port || 993,secure:true,auth:{user:account.address,pass:account.password},logger:false,connectionTimeout:12000,greetingTimeout:12000,socketTimeout:20000,disableAutoIdle:true});
   let timeout;
   const interrupted=new Promise((resolve,reject)=> {
     // ImapFlow emits errors after connect; an unhandled event would stop Node.

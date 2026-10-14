@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import proxyaddr from 'proxy-addr';
-import { config } from './config.mjs';
+import { config, root } from './config.mjs';
 import { HttpError, identity, personal, mutation, control } from './security.mjs';
 import { Accounts, missing, unavailable, projectWall } from './data.mjs';
 import { connectors, mailList, mailMessage, withMailbox } from './connectors.mjs';
@@ -23,6 +23,7 @@ async function body(request) {
   try {const parsed=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();return parsed;}
   catch {throw new HttpError(400,'Invalid JSON request.');}
 }
+const mailOptions={server:config.mail};
 async function mailbox(user,work) {
   personal(user);
   if(mailBusy.has(user.username) || mailBusy.size>=8) throw new HttpError(429,'A mail request is already running. Try again shortly.');
@@ -31,9 +32,9 @@ async function mailbox(user,work) {
 }
 const staticFiles=new Map([
  ['/','app/index.html'],['/inbox','app/index.html'],['/wall','app/index.html'],['/settings','app/index.html'],
- ['/app.js','app/app.js'],['/app.css','app/app.css'],['/styles.css','styles.css'],
- ['/home-art.svg','app/home-art.svg'],
- ...['index.html','dashboard-overview.html','dashboard-inbox.html','wall-display.html','styles.css','mockups.js'].map(name=>[`/previews/${name}`,name])
+ ['/app.js','app/app.js'],['/app.css','app/app.css'],['/styles.css','app/styles.css'],
+ ['/home-art.svg','app/home-art.svg'],['/previews/styles.css','app/styles.css'],
+ ...['index.html','dashboard-overview.html','dashboard-inbox.html','wall-display.html','mockups.js'].map(name=>[`/previews/${name}`,`previews/${name}`])
 ]);
 const csp="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 const server=http.createServer({maxHeaderSize:16384},async(request,response)=> {
@@ -54,7 +55,7 @@ const server=http.createServer({maxHeaderSize:16384},async(request,response)=> {
     }
     limit(`request:${user.username}`,180);
     if(['POST','DELETE'].includes(request.method)) {mutation(request.headers,config.origin);limit(`write:${user.username}`,15);}
-    if(pathname==='/api/session' && request.method==='GET') return send({...user,local:config.local,timezone:config.timezone});
+    if(pathname==='/api/session' && request.method==='GET') return send({...user,local:config.local,timezone:config.timezone,locale:config.locale,mailProvider:config.mail.provider,mailEnabled:Boolean(config.mail.host)});
     if(pathname==='/api/overview' && request.method==='GET') {
       const [home,budget,fleet]=await Promise.all([sources.home(),sources.budget(),sources.fleet()]);
       const data={user,home,budget,fleet,services:config.services.filter(item=>!item.admin || user.admin)};
@@ -68,24 +69,26 @@ const server=http.createServer({maxHeaderSize:16384},async(request,response)=> {
       return send({message:'Command accepted. Device state will refresh from Home Assistant.'});
     }
     if(pathname==='/api/mail' && request.method==='GET') return await mailbox(user,async()=> {
+      if(!config.mail.host) return send(missing('Mailbox access is not configured on this server.'));
       const account=await accounts.get(user.username);
-      if(!account) return send(missing('Connect your Purelymail mailbox in settings.'));
-      try {return send(await mailList(account));} catch {return send(unavailable('Mail could not be reached or authenticated. Check your mailbox settings.'));}
+      if(!account) return send(missing('Connect your mailbox in settings.'));
+      try {return send(await mailList(account,mailOptions));} catch {return send(unavailable('Mail could not be reached or authenticated. Check your mailbox settings.'));}
     });
     if(pathname.startsWith('/api/mail/message/') && request.method==='GET') return await mailbox(user,async()=> {
       const account=await accounts.get(user.username);
       if(!account) throw new HttpError(409,'Connect your mailbox first.');
-      try {return send(await mailMessage(account,pathname.slice('/api/mail/message/'.length)));}
+      try {return send(await mailMessage(account,pathname.slice('/api/mail/message/'.length),mailOptions));}
       catch(error) {if(error instanceof HttpError) throw error;throw new HttpError(502,'This message could not be loaded.');}
     });
     if(pathname==='/api/mail/account' && request.method==='GET') {
       personal(user);const account=await accounts.get(user.username);return send({connected:Boolean(account),address:account?.address || null});
     }
     if(pathname==='/api/mail/account' && request.method==='POST') return await mailbox(user,async()=> {
+      if(!config.mail.host) throw new HttpError(503,'Mailbox access is not configured on this server.');
       const input=await body(request);
       if(typeof input.address!=='string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.address) || input.address.length>254 || typeof input.password!=='string' || !input.password || input.password.length>1024) throw new HttpError(400,'Enter your mailbox address and password.');
       const account={address:input.address.trim(),password:input.password};
-      try {await withMailbox(account,async()=>{});} catch {throw new HttpError(422,'Mailbox authentication failed. Check the address and password.');}
+      try {await withMailbox(account,async()=>{},mailOptions);} catch {throw new HttpError(422,'Mailbox authentication failed. Check the address and password.');}
       await accounts.set(user.username,account);return send({message:'Your mailbox is connected.'});
     });
     if(pathname==='/api/mail/account' && request.method==='DELETE') return await mailbox(user,async()=>{await accounts.set(user.username,null);return send({message:'Mailbox disconnected and saved credentials removed.'});});
@@ -95,7 +98,7 @@ const server=http.createServer({maxHeaderSize:16384},async(request,response)=> {
     if(!file || !['GET','HEAD'].includes(request.method)) throw new HttpError(404,'Page not found.');
     // Mockups have inline presentation styles; live surfaces use the stricter policy.
     if(pathname.startsWith('/previews/')) response.setHeader('Content-Security-Policy',csp.replace("style-src 'self'","style-src 'self' 'unsafe-inline'"));
-    const content=await readFile(resolve(file));
+    const content=await readFile(resolve(root,file));
     const type=file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html';
     response.writeHead(200,{'Content-Type':`${type}; charset=utf-8`});response.end(request.method==='HEAD'?undefined:content);
   } catch(error) {

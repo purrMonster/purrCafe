@@ -9,7 +9,7 @@ import http from 'node:http';
 async function unusedPort() {const server=http.createServer();server.listen(0,'127.0.0.1');await once(server,'listening');const port=server.address().port;await new Promise(resolve=>server.close(resolve));return port;}
 async function launch(trusted,homeFile,dir,haUrl) {
   const port=await unusedPort();
-  const child=spawn(process.execPath,['server/index.mjs'],{env:{...process.env,NODE_ENV:'production',HOST:'127.0.0.1',PORT:String(port),PUBLIC_ORIGIN:'https://dashboard.example',APP_ENCRYPTION_KEY:'ab'.repeat(32),AUTH_TRUSTED_PROXY_CIDRS:trusted,HA_ENTITIES_FILE:homeFile,DATA_DIR:dir,HA_URL:haUrl,HA_TOKEN:'fixture-token',ACTUAL_SERVER_URL:'',ACTUAL_SYNC_ID:'',ACTUAL_PASSWORD:'',ACTUAL_SESSION_TOKEN:'',GATUS_URL:'',DOMAIN:''},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['server/index.mjs'],{env:{...process.env,NODE_ENV:'production',HOST:'127.0.0.1',PORT:String(port),PUBLIC_ORIGIN:'https://dashboard.example',APP_ENCRYPTION_KEY:'ab'.repeat(32),AUTH_TRUSTED_PROXY_CIDRS:trusted,HA_ENTITIES_FILE:homeFile,DATA_DIR:dir,HA_URL:haUrl,HA_TOKEN:'fixture-token',ACTUAL_SERVER_URL:'',ACTUAL_SYNC_ID:'',ACTUAL_PASSWORD:'',ACTUAL_SESSION_TOKEN:'',GATUS_URL:'',DOMAIN:'',MAIL_IMAP_HOST:'',BUDGET_CURRENCY:'',SERVICES_FILE:join(dir,'missing-services.json')},stdio:['ignore','pipe','pipe']});
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Server startup timed out')),10000);child.stdout.once('data',()=>{clearTimeout(timer);resolve();});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Server exited during startup'));});});
   return {child,url:`http://127.0.0.1:${port}`};
 }
@@ -35,6 +35,8 @@ test('HTTP routes enforce proxy trust, wall privacy, CSRF and real control allow
     assert.equal((await fetch(`${live.url}/api/home/control`,{method:'POST',headers:commandHeaders,body:JSON.stringify({id:'light.other',action:'turn_off'})})).status,403);
     assert.equal((await fetch(`${live.url}/api/home/control`,{method:'POST',headers:commandHeaders,body:JSON.stringify({id:'light.room',action:'turn_off'})})).status,200);assert.equal(commands,1);
     assert.equal((await fetch(`${live.url}/.env`,{headers:household})).status,404);
+    assert.equal((await (await fetch(`${live.url}/api/mail`,{headers:household})).json()).status,'not_configured');
+    assert.deepEqual(overview.services,[]);
     untrusted=await launch('192.0.2.1/32',homeFile,dir,haUrl);
     assert.equal((await fetch(`${untrusted.url}/api/session`,{headers:household})).status,401);assert.equal((await fetch(`${untrusted.url}/healthz`)).status,200);
   } finally {

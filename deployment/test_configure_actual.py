@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import runpy
 import shutil
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -17,6 +18,8 @@ class ConfigureActualTests(unittest.TestCase):
         (self.root / 'deployment').mkdir()
         self.script = self.root / 'deployment/configure-actual.py'
         shutil.copyfile(Path(__file__).with_name('configure-actual.py'), self.script)
+        shutil.copyfile(Path(__file__).with_name('common.py'), self.root / 'deployment/common.py')
+        sys.modules.pop('common', None)
         self.original = 'APP_ENCRYPTION_KEY=fixture-existing-key\nACTUAL_SERVER_URL=\nACTUAL_SYNC_ID=\nACTUAL_SESSION_TOKEN=\nACTUAL_PASSWORD=old-password\nACTUAL_ENCRYPTION_PASSWORD=\nBUDGET_CURRENCY=INR\n'
         (self.root / '.env').write_text(self.original)
 
@@ -24,17 +27,19 @@ class ConfigureActualTests(unittest.TestCase):
         os.chdir(self.previous_cwd)
         self.temp.cleanup()
 
-    def run_helper(self, token='fixture-token', sync='fixture-sync', encryption='', tty=True):
+    def run_helper(self, token='fixture-token', sync='fixture-sync', encryption='', tty=True, server=None):
         output = io.StringIO()
-        with patch('sys.stdin.isatty', return_value=tty), patch('builtins.input', side_effect=[sync, 'INR']), patch('getpass.getpass', side_effect=[token, encryption]), patch('subprocess.run') as runner, contextlib.redirect_stdout(output):
+        answers = ([server] if server is not None else []) + [sync, '']
+        with patch('sys.stdin.isatty', return_value=tty), patch('builtins.input', side_effect=answers), patch('getpass.getpass', side_effect=[token, encryption]), patch('subprocess.run') as runner, contextlib.redirect_stdout(output):
             runpy.run_path(str(self.script), run_name='__main__')
         return output.getvalue(), runner
 
     def test_settings_private_backup_and_no_secret_output(self):
-        output, runner = self.run_helper()
+        output, runner = self.run_helper(server='http://budget.invalid:5006')
         text = (self.root / '.env').read_text()
         self.assertIn('APP_ENCRYPTION_KEY=fixture-existing-key', text)
-        self.assertIn('ACTUAL_SERVER_URL=http://actualbudget:5006', text)
+        self.assertIn('ACTUAL_SERVER_URL=http://budget.invalid:5006', text)
+        self.assertIn('BUDGET_CURRENCY=INR', text)
         self.assertIn("ACTUAL_SESSION_TOKEN='fixture-token'", text)
         self.assertIn('ACTUAL_PASSWORD=\n', text)
         self.assertNotIn('fixture-token', output)
@@ -48,6 +53,11 @@ class ConfigureActualTests(unittest.TestCase):
         self.run_helper()
         self.assertIn('ACTUAL_SERVER_URL=http://custom.invalid:5006', (self.root / '.env').read_text())
 
+    def test_rejects_backend_url_with_path(self):
+        with self.assertRaises(SystemExit):
+            self.run_helper(server='http://budget.invalid:5006/api')
+        self.assertEqual((self.root / '.env').read_text(), self.original)
+
     def test_rejects_noninteractive_input(self):
         with self.assertRaises(SystemExit):
             self.run_helper(tty=False)
@@ -55,18 +65,18 @@ class ConfigureActualTests(unittest.TestCase):
 
     def test_rejects_invalid_token(self):
         with self.assertRaises(SystemExit):
-            self.run_helper(token='line1\nline2')
+            self.run_helper(token='line1\nline2', server='http://budget.invalid:5006')
         self.assertEqual((self.root / '.env').read_text(), self.original)
 
     def test_rejects_duplicate_setting(self):
         text = self.original + 'ACTUAL_SYNC_ID=duplicate\n'
         (self.root / '.env').write_text(text)
         with self.assertRaises(SystemExit):
-            self.run_helper()
+            self.run_helper(server='http://budget.invalid:5006')
         self.assertEqual((self.root / '.env').read_text(), text)
 
     def test_password_characters_are_preserved(self):
-        self.run_helper(encryption='fixture $cash #hash \\slash')
+        self.run_helper(encryption='fixture $cash #hash \\slash', server='http://budget.invalid:5006')
         self.assertIn("ACTUAL_ENCRYPTION_PASSWORD='fixture $cash #hash \\slash'", (self.root / '.env').read_text())
 
 if __name__ == '__main__':

@@ -1,11 +1,16 @@
-"""Read-only checks of the deployed Cafe container and HTTPS entry point."""
+"""Read-only checks of the deployed dashboard container and its HTTPS entry point."""
 import json
+from pathlib import Path
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
 
-name = 'purrbrews-cafe-purrbrews-dashboard-1'
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import container_id  # noqa: E402
+
+name = container_id()
 deadline = time.monotonic() + 45
 while True:
     result = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, check=True)
@@ -18,17 +23,22 @@ while True:
 environment = dict(item.split('=', 1) for item in container['Config']['Env'] if '=' in item)
 print('Container health:', container['State'].get('Health', {}).get('Status', 'unknown'))
 print('Restart count:', container['RestartCount'])
-code = """Promise.all(['/healthz','/api/session'].map(async p=>{
-const r=await fetch('http://127.0.0.1:4174'+p,{redirect:'manual'});
+code = """const base='http://127.0.0.1:'+(process.env.PORT||4174);
+Promise.all(['/healthz','/api/session'].map(async p=>{
+const r=await fetch(base+p,{redirect:'manual'});
 console.log(p+': HTTP '+r.status); if(r.status!==(p==='/healthz'?200:401))process.exitCode=1;
 })).catch(()=>{console.error('Internal HTTP check failed');process.exitCode=1});"""
 subprocess.run(['docker', 'exec', name, 'node', '-e', code], check=True)
+
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
-origin = environment['PUBLIC_ORIGIN']
+
+origin = environment.get('PUBLIC_ORIGIN') or ('https://' + environment['PUBLIC_HOSTNAME'] if environment.get('PUBLIC_HOSTNAME') else '')
+if not origin:
+    raise SystemExit('Neither PUBLIC_HOSTNAME nor PUBLIC_ORIGIN is set in the container environment.')
 opener = urllib.request.build_opener(NoRedirect)
 for route in ['/', '/api/session']:
     try:
@@ -43,5 +53,5 @@ for route in ['/', '/api/session']:
         raise SystemExit(1)
     print('HTTPS ' + route + ': HTTP ' + str(status))
     if status not in [301, 302, 303, 307, 308, 401, 403]:
-        raise SystemExit('Expected Authelia redirect or access denial for an unauthenticated HTTPS request.')
+        raise SystemExit('Expected an SSO redirect or access denial for an unauthenticated HTTPS request.')
 print('HTTPS responds without bypassing TLS verification; authenticated browser checks remain required.')
