@@ -34,10 +34,13 @@ The live app serves `/`, `/inbox`, `/settings` and `/wall`; sample mockups stay 
 4. Configure integrations (see [CONFIGURATION.md](CONFIGURATION.md)), then start and check:
 
    ```sh
-   docker compose up -d --build
+   docker compose pull          # the release pinned in CAFE_IMAGE
+   docker compose up -d
    python3 deployment/verify.py
    python3 deployment/integration-status.py
    ```
+
+   To run your own build instead, leave `CAFE_IMAGE` unset and use `docker compose up -d --build`.
 
 `/healthz` reports app availability only, not upstream health.
 
@@ -56,8 +59,19 @@ The live app serves `/`, `/inbox`, `/settings` and `/wall`; sample mockups stay 
 
 - **Back up together:** the `dashboard-data` volume, `.env` (it holds the encryption key) and `config/`. Saved mailboxes cannot be read without the original key. Verify a restore before relying on it.
 - **Stop:** `docker compose down`. Never `down -v` unless you mean to delete saved mailboxes and the budget cache.
-- **Update:** `git pull --ff-only`, run `npm test` if you changed code, `docker compose up -d --build`, then `python3 deployment/verify.py`.
-- **Roll back:** check out the previous tag or commit and rebuild. The data volume format has not changed between versions.
+- **Update:** read the release notes, set `CAFE_IMAGE` to the new version, `git pull --ff-only` (for compose and helper changes), then `docker compose pull && docker compose up -d` and `python3 deployment/verify.py`.
+- **Roll back:** set `CAFE_IMAGE` back to the previous version and `docker compose up -d`. The data volume format has not changed between versions.
+
+## Images
+
+GitHub Actions publishes `ghcr.io/purrmonster/purrcafe` for `linux/amd64` after the test suite passes inside the built image:
+
+| Trigger | Tags | Use |
+| --- | --- | --- |
+| Git tag `vX.Y.Z` (must equal `package.json` version) | `X.Y.Z`, `X.Y`, `latest` | Deploy these, pinned to `X.Y.Z` |
+| Push to `main` | `edge`, `sha-<commit>` | Testing only |
+
+If the package is private, run `docker login ghcr.io` on the server with a token that has `read:packages`, or make the package public in its GitHub settings.
 
 ## Migrating from the pre-cleanup layout
 
