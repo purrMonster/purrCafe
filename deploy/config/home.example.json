@@ -1,0 +1,7 @@
+[
+  {"id":"sensor.living_room_temperature","label":"Temperature","area":"Living room","wall":true,"actions":[]},
+  {"id":"sensor.living_room_humidity","label":"Humidity","area":"Living room","wall":true,"actions":[]},
+  {"id":"light.living_room","label":"Living room lights","area":"Living room","wall":true,"wallControl":true,"actions":["turn_on","turn_off"]},
+  {"id":"light.reading_lamp","label":"Reading lamp","area":"Living room","wall":true,"wallControl":true,"actions":["turn_on","turn_off"]},
+  {"id":"fan.bedroom","label":"Bedroom fan","area":"Bedroom","wall":true,"wallControl":true,"actions":["turn_on","turn_off"]}
+]
