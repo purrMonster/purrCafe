@@ -49,8 +49,10 @@ export function normalizeBudget(raw,currency) {
   if(!Object.values(totals).every(Number.isSafeInteger)) throw new Error('Budget totals exceed safe integer limits.');
   return {month:raw.month,currency,categories,...totals};
 }
-export function normalizeFleet(data,keys={},now=Date.now()) {
-  return ['sieve','percolator','cellar','mochaPot','grinder'].map(name=> {
+// nodes: names to show, in order. Empty means every endpoint Gatus reports.
+export function normalizeFleet(data,keys={},now=Date.now(),nodes=[]) {
+  const names=nodes.length?nodes:[...new Set(data.map(item=>String(item?.name || '')).filter(Boolean))].slice(0,24);
+  return names.map(name=> {
     const item=data.find(item=>keys[name]?item.key===keys[name]:String(item.name).toLowerCase()===name.toLowerCase());
     if(!item) return {name,state:'unknown',checkedAt:null};
     const results=(Array.isArray(item.results)?item.results:[]).filter(result=>Number.isFinite(Date.parse(result?.timestamp))).sort((a,b)=>Date.parse(b.timestamp)-Date.parse(a.timestamp));

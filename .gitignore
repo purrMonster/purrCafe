@@ -7,3 +7,7 @@ data/
 __pycache__/
 *.pyc
 SKILLS/
+# Household configuration stays on the server; only examples are tracked.
+config/*.json
+!config/*.example.json
+compose.override.yaml

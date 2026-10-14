@@ -11,10 +11,9 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY package.json ./
 COPY server ./server
 COPY app ./app
-COPY config ./config
-COPY styles.css mockups.js index.html dashboard-overview.html dashboard-inbox.html wall-display.html ./
-RUN mkdir -p /app/data && chown node:node /app/data
+COPY previews ./previews
+RUN mkdir -p /app/data /app/config && chown node:node /app/data
 USER node
 EXPOSE 4174
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:4174/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4174)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node","server/index.mjs"]

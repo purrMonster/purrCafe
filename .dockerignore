@@ -1,6 +1,12 @@
 node_modules
 .env
+.env.*
 data
 .git
 SKILLS
-*.jpg
+docs
+verification
+deployment
+config
+compose*.yaml
+*.md

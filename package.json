@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.16" },
+  "engines": {
+    "node": ">=22.16"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "dev": "node --watch --env-file-if-exists=.env server/index.mjs",
-    "preview": "node preview-server.cjs",
-    "test": "node --test server/*.test.mjs"
+    "preview": "node previews/preview-server.cjs",
+    "test": "node --test server/*.test.mjs",
+    "test:deploy": "python3 -m unittest discover -s deployment -p 'test_*.py'"
   },
   "dependencies": {
     "@actual-app/api": "26.9.0",
@@ -16,5 +19,7 @@
     "mailparser": "3.9.33",
     "proxy-addr": "2.0.8"
   },
-  "allowScripts": { "better-sqlite3": true }
+  "allowScripts": {
+    "better-sqlite3": true
+  }
 }

@@ -16,7 +16,7 @@ class FakeMail extends EventEmitter {
   async download(uid,part,options) {assert.equal(uid,'1');assert.equal(part,undefined);assert.deepEqual(options,{uid:true,maxBytes:1_000_001});return {content:Readable.from([this.raw])};}
 }
 const account={address:'test@example.invalid',password:'fixture'};
-function options(client,timeoutMs=1000) {return {timeoutMs,createClient:settings=>{assert.equal(settings.host,'imap.purelymail.com');assert.equal(settings.secure,true);assert.equal(settings.port,993);assert.equal(settings.logger,false);return client;}};}
+function options(client,timeoutMs=1000) {return {timeoutMs,server:{host:'imap.example.invalid',port:993},createClient:settings=>{assert.equal(settings.host,'imap.example.invalid');assert.equal(settings.secure,true);assert.equal(settings.port,993);assert.equal(settings.logger,false);return client;}};}
 test('mail uses TLS and a read-only mailbox, and handles malformed dates',async()=> {
   const client=new FakeMail(),result=await mailList(account,options(client));assert.equal(result.data.unread,1);assert.equal(result.data.messages[0].receivedAt,null);assert.equal(client.released,true);assert.equal(client.closed,true);
 });
@@ -38,7 +38,7 @@ test('stream limit catches a source that grows after the size check',async()=> {
 test('Gatus handles ordering, malformed timestamps, stale and future readings',()=> {
   const now=Date.now(),at=offset=>new Date(now+offset).toISOString();
   const data=[{name:'Percolator',key:'fleet_apps',results:[{timestamp:'invalid',success:true},{timestamp:at(-40000),success:false},{timestamp:at(-10000),success:true}]},{name:'cellar',results:[{timestamp:at(-400000),success:true}]},{name:'sieve',results:[{timestamp:at(90000),success:true}]}];
-  const states=normalizeFleet(data,{percolator:'fleet_apps'},now);assert.equal(states.find(x=>x.name==='percolator').state,'up');assert.equal(states.find(x=>x.name==='cellar').state,'unknown');assert.equal(states.find(x=>x.name==='sieve').state,'unknown');assert.equal(states.find(x=>x.name==='grinder').state,'unknown');
+  const states=normalizeFleet(data,{percolator:'fleet_apps'},now,['sieve','percolator','cellar','grinder']);assert.equal(states.find(x=>x.name==='percolator').state,'up');assert.equal(states.find(x=>x.name==='cellar').state,'unknown');assert.equal(states.find(x=>x.name==='sieve').state,'unknown');assert.equal(states.find(x=>x.name==='grinder').state,'unknown');
 });
 test('invalidation during a read triggers a fresh read for the next caller',async()=> {
   let release,calls=0;const first=new Promise(resolve=>release=resolve);const get=cached(10,async()=>{calls++;return calls===1?first:ready('new state');});const old=get();await Promise.resolve();get.clear();const fresh=get();release(ready('old state'));assert.equal((await old).data,'old state');assert.equal((await fresh).data,'new state');assert.equal(calls,2);
@@ -50,4 +50,12 @@ test('Actual rejects null or overflowing financial amounts',()=> {
 test('upstream responses reject redirects and oversized bodies',async()=> {
   const server=http.createServer((request,response)=>{if(request.url==='/redirect'){response.writeHead(302,{Location:'/large'});response.end();}else response.end(Buffer.alloc(5_000_001));});server.listen(0,'127.0.0.1');await once(server,'listening');
   try {const base=`http://127.0.0.1:${server.address().port}`;await assert.rejects(json(`${base}/redirect`));await assert.rejects(json(`${base}/large`),/too large/);}finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+test('fleet without configured nodes lists every reported endpoint once',()=> {
+  const now=Date.now(),fresh=[{timestamp:new Date(now-1000).toISOString(),success:true}];
+  const states=normalizeFleet([{name:'alpha',results:fresh},{name:'beta',results:[]},{name:'alpha',results:fresh}],{},now);
+  assert.deepEqual(states.map(x=>[x.name,x.state]),[['alpha','up'],['beta','unknown']]);
+});
+test('mail refuses to connect when no IMAP server is configured',async()=> {
+  await assert.rejects(withMailbox(account,async()=>{},{createClient:()=>{throw new Error('should not connect');}}),error=>error.status===503);
 });

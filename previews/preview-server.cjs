@@ -13,7 +13,7 @@ const files = {
   'dashboard-overview.html': 'text/html',
   'dashboard-inbox.html': 'text/html',
   'wall-display.html': 'text/html',
-  'styles.css': 'text/css',
+  'styles.css': 'text/css', // shared with the live app: ../app/styles.css
   'mockups.js': 'text/javascript'
 };
 
@@ -29,7 +29,7 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   try {
-    const content = await fs.readFile(path.join(__dirname, file));
+    const content = await fs.readFile(file === 'styles.css' ? path.join(__dirname, '..', 'app', 'styles.css') : path.join(__dirname, file));
     response.writeHead(200, {
       'Content-Type': `${files[file]}; charset=utf-8`,
       'Cache-Control': 'no-store',
@@ -42,7 +42,7 @@ const server = http.createServer(async (request, response) => {
 });
 server.on('error', error => {
   console.error(error.code === 'EADDRINUSE'
-    ? `Port ${port} is in use. Try: node preview-server.cjs ${port + 1}`
+    ? `Port ${port} is in use. Try: node previews/preview-server.cjs ${port + 1}`
     : 'The preview server could not start.');
   process.exitCode = 1;
 });

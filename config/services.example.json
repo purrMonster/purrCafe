@@ -1,0 +1,8 @@
+[
+  {"name":"Photos","group":"Everyday","host":"photos"},
+  {"name":"Budget","group":"Everyday","host":"budget"},
+  {"name":"Home automation","group":"Home","host":"home"},
+  {"name":"Status page","group":"Operations","host":"status","admin":true},
+  {"name":"External docs","group":"Operations","url":"https://docs.example.invalid","admin":true},
+  {"name":"Backups","group":"Operations","admin":true,"note":"No web interface; listed for reference."}
+]
