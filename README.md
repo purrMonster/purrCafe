@@ -1,46 +1,50 @@
-# Purrbrews household dashboard
+# purrCafe
 
-## Live dashboard
+A small, private household dashboard: home sensors and switches (Home Assistant), the month's budget (Actual Budget), each person's own inbox (any IMAP server), fleet reachability (Gatus) and a directory of your self-hosted services. It runs behind a reverse proxy with forward-auth SSO (built and tested with Traefik + Authelia) and has a separate wall-display view that never sees personal data.
 
-Start with [CONFIGURATION.md](CONFIGURATION.md) for the step-by-step setup of Actual, personal mail, Home Assistant, Gatus, and the wall display.
+![Live dashboard](docs/images/live-dashboard.jpg)
 
-The production application is now separate from these mockups. See [DEPLOYMENT.md](DEPLOYMENT.md) for local development, Authelia access, Home Assistant, Actual Budget, Purelymail, Gatus, and Docker deployment. Live pages run on port 4174; the standalone mockup server below remains on port 4173.
+- **No framework, four runtime dependencies.** Plain Node 22 server, plain JS front end.
+- **Nothing environment-specific in code.** Hostnames, endpoints, nodes, locale and currency come from `.env` and two JSON files in `config/`.
+- **Read-only by default.** Home Assistant actions must be listed per entity; mail is opened read-only; the budget is never edited.
 
-## Launch directly — no installation needed
+## Quick start (local, no auth)
 
-1. Open this folder in File Explorer: `C:\Users\jyotirmoyc\Desktop\Projects\homepage`.
-2. Double-click `index.html` to open the preview gallery in your browser.
-3. Choose the overview, inbox, or wall display. Try the theme toggle and click a message or budget detail button.
-
-No build, dependencies, server, or internet connection is required. Keep the HTML pages, `styles.css`, and `mockups.js` together when moving the previews.
-
-## Launch with a local preview server
-
-If you prefer a localhost URL, use the included server. It requires Node.js and no npm installation. Run these commands in PowerShell:
-
-```powershell
-Set-Location 'C:\Users\jyotirmoyc\Desktop\Projects\homepage'
-node .\preview-server.cjs
+```sh
+npm ci
+APP_ENCRYPTION_KEY=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))") \
+NODE_ENV=development node server/index.mjs --local
 ```
 
-Open **http://127.0.0.1:4173/index.html** in your browser. Keep the terminal open while browsing; press **Ctrl+C** in that terminal to stop the server. The server listens only on your computer.
+Open http://127.0.0.1:4174. `--local` disables authentication and listens on loopback only; never use it on a server. Every integration shows a setup state until configured.
 
-If port 4173 is already in use, the preview may already be running at that URL. To launch another instance on port 4174:
+## Deploy
 
-```powershell
-node .\preview-server.cjs 4174
+```sh
+cp .env.example .env                                   # fill in PUBLIC_HOSTNAME, key, proxy trust, integrations
+cp config/services.example.json config/services.json   # your shortcuts
+cp config/home.example.json config/home.json           # your Home Assistant entities (or leave out)
+docker compose up -d --build
+python3 deployment/verify.py
 ```
 
-Then open **http://127.0.0.1:4174/index.html**. If `node` is not recognized, use the direct-open method above.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full setup and [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for each integration. All settings are listed in [.env.example](.env.example).
 
-## Screens and interactions
+## Layout
 
-- `dashboard-overview.html`: household overview, sample device switches, budget drawer, message drawers, fleet details, and searchable service directory.
-- `dashboard-inbox.html`: fictional personal inbox with a message detail drawer.
-- `wall-display.html`: larger touch controls and aggregate budget values, without personal mail or category details.
+| Path | What |
+| --- | --- |
+| `server/` | HTTP server, integrations, security checks, tests (`npm test`) |
+| `app/` | Live front end |
+| `config/` | `*.example.json` templates; your real `home.json` / `services.json` stay untracked |
+| `deployment/` | Server-side helper scripts that never print secrets (`npm run test:deploy`) |
+| `previews/` | Static design mockups with sample data (`npm run preview`, port 4173) |
+| `verification/` | Fictional-data UI fixture for browser checks |
+| `docs/` | Deployment, configuration, verification history, runbook |
 
-The theme toggle persists across pages when browser storage is available. Drawers close with the close button or Escape. On small screens they occupy the full viewport.
+## Tests
 
-The refreshed design uses a coffee-house editorial style, original inline home illustrations, an expense-envelope ring, and tactile mail and service panels. Try **Morning**, **Reading**, and **Wind down** to change the sample devices together. Individual switches clear the selected scene. All artwork is embedded; no fonts, images, or libraries are downloaded.
-
-Financial amounts, email messages, time, device states, and node availability are illustrative. Backup verification is marked incomplete based on the supplied Purrbrews README. No credentials are collected and no live service is contacted.
+```sh
+npm test             # server tests
+npm run test:deploy  # deployment helper tests (Python 3)
+```

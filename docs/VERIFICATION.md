@@ -1,5 +1,7 @@
 # Purrbrews verification report
 
+> **Historical record.** Commands, file names and settings below predate the October 14, 2026 cleanup. Current instructions are in [DEPLOYMENT.md](DEPLOYMENT.md) and [CONFIGURATION.md](CONFIGURATION.md).
+
 ## October 3, 2026 repass
 
 - 19 application tests passed again on Windows and inside the deployed Linux container.
@@ -68,7 +70,7 @@ Used the real frontend with a disposable localhost fixture containing explicitly
 - No warning or error console messages were reported in the fixture pass.
 - Restarted the live local app and confirmed missing integrations display setup states, with no invented readings.
 
-The fictional screenshot is [verification/ui-review.png](verification/ui-review.png). To repeat UI checks, run `node verification/ui-fixture.mjs`, open `http://127.0.0.1:4175`, and stop with Ctrl+C. Never deploy this verification fixture.
+The fictional screenshot is [verification/ui-review.png](../verification/ui-review.png). To repeat UI checks, run `node verification/ui-fixture.mjs`, open `http://127.0.0.1:4175`, and stop with Ctrl+C. Never deploy this verification fixture.
 
 ## Remaining commissioning checks
 
