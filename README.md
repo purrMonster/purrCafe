@@ -1,8 +1,16 @@
 # purrCafe
 
+[![CI](https://github.com/purrMonster/purrCafe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/purrMonster/purrCafe/actions/workflows/ci.yml)
+[![Image](https://github.com/purrMonster/purrCafe/actions/workflows/image.yml/badge.svg)](https://github.com/purrMonster/purrCafe/actions/workflows/image.yml)
+[![Release](https://img.shields.io/github/v/release/purrMonster/purrCafe?sort=semver&display_name=tag)](https://github.com/purrMonster/purrCafe/releases/latest)
+[![Image tag](https://img.shields.io/github/v/tag/purrMonster/purrCafe?sort=semver&filter=v*&label=ghcr.io%2Fpurrmonster%2Fpurrcafe)](https://github.com/purrMonster/purrCafe/pkgs/container/purrcafe)
+
 A small, private household dashboard: home sensors and switches (Home Assistant), the month's budget (Actual Budget), each person's own inbox (any IMAP server), fleet reachability (Gatus) and a directory of your self-hosted services. It runs behind a reverse proxy with forward-auth SSO (built and tested with Traefik + Authelia) and has a separate wall-display view that never sees personal data.
 
-![Live dashboard](docs/images/live-dashboard.jpg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/dashboard-dark.jpg">
+  <img alt="purrCafe overview page with fictional sample data" src="docs/images/dashboard-light.jpg" width="1440">
+</picture>
 
 - **No framework, four runtime dependencies.** Plain Node 22 server, plain JS front end.
 - **Nothing environment-specific in code.** Hostnames, endpoints, nodes, locale and currency come from `.env` and two JSON files in `config/`.
