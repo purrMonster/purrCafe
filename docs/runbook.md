@@ -1,5 +1,18 @@
 # Runbook
 
+## 2026-10-14 — CI and image publishing (branch `ci/image-and-tests`)
+
+- Added `.github/workflows/ci.yml`. It runs on PRs and main: server tests, helper tests, `npm audit` (high and above), then an image build with the tests run inside it.
+- Added `.github/workflows/image.yml`, which publishes `ghcr.io/purrmonster/purrcafe` for amd64.
+  - A push to main publishes `:edge` and `:sha-<short>`.
+  - A `vX.Y.Z` tag publishes `:X.Y.Z`, `:X.Y` and `:latest`, after checking that the tag matches `package.json`.
+  - Release images are kept separate from edge builds.
+- All actions are pinned to commit SHAs. actionlint is clean.
+- Image size: kept as-is on purpose (option A). About 589 MB on disk and about 110 MB to pull. Most of it is the Node base image plus Actual's dependencies. A distroless base would save 100–150 MB but drops the shell; not worth it.
+- `CAFE_IMAGE` selects the release to pull; leaving it unset still builds locally.
+
+**Where we stopped / next step:** merge the PR and confirm the first `:edge` push and the package's visibility. Then the release: bump `package.json` to 1.1.0, tag `v1.1.0`, and write release notes that include the migration steps.
+
 ## 2026-10-14 — Verification and cleanup (branch `cleanup/config-and-hygiene`)
 
 - Verified: 21 server + 6 helper tests passed on `main`. `npm audit` flagged critical handlebars 4.7.9 (via `@actual-app/core`); bumped to 4.7.10.

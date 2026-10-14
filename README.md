@@ -24,7 +24,7 @@ Open http://127.0.0.1:4174. `--local` disables authentication and listens on loo
 cp .env.example .env                                   # fill in PUBLIC_HOSTNAME, key, proxy trust, integrations
 cp config/services.example.json config/services.json   # your shortcuts
 cp config/home.example.json config/home.json           # your Home Assistant entities (or leave out)
-docker compose up -d --build
+docker compose pull && docker compose up -d            # release image from CAFE_IMAGE
 python3 deployment/verify.py
 ```
 
@@ -41,6 +41,10 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full setup and [docs/CONFIG
 | `previews/` | Static design mockups with sample data (`npm run preview`, port 4173) |
 | `verification/` | Fictional-data UI fixture for browser checks |
 | `docs/` | Deployment, configuration, verification history, runbook |
+
+## Images and releases
+
+`ghcr.io/purrmonster/purrcafe` (amd64). Release tags `vX.Y.Z` publish `:X.Y.Z`, `:X.Y` and `:latest`; every push to `main` publishes `:edge`. Deploy a pinned release, never `:edge`. CI runs the tests on every PR.
 
 ## Tests
 
