@@ -1,5 +1,13 @@
 # Runbook
 
+## 2026-10-14 — Released v1.1.0
+
+- He created tag `v1.1.0` on `a540211` and the GitHub release by hand; this session isn't allowed to push tags or create releases.
+- The image workflow on the tag succeeded. GHCR now has `1.1.0`, `1.1`, `latest`, `edge` and `sha-*`; the package is public.
+- Pulled `:1.1.0` anonymously and ran it read-only. It came up healthy, with labels `version=1.1.0` and `revision=a540211`.
+
+**Where we stopped / next step:** percolator is still on the pre-cleanup deployment. Migrate it per the release notes (copy `services.json` aside before pulling, add the new `.env` settings, `CAFE_IMAGE=ghcr.io/purrmonster/purrcafe:1.1.0`, `docker compose pull && up -d`, `verify.py`). Not yet verified: a live deployment of 1.1.0 with real integrations.
+
 ## 2026-10-14 — Release 1.1.0 prepared (branch `release/v1.1.0`)
 
 - Bumped `package.json` and `package-lock.json` to 1.1.0. Added `CHANGELOG.md`; its 1.1.0 section is the release notes.
